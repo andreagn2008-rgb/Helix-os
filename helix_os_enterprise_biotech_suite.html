@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Helix OS v5.0 - Enterprise Biotech & Genomics Suite</title>
+  <!-- Three.js CDN -->
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font & Icone (Inter, JetBrains Mono & FontAwesome) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Three.js (3D Graphics) & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Chart.js (Telemetria) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        helixBg: '#030712',
+                        helixPanel: '#090d16',
+                        helixCard: '#0f172a',
+                        helixCyan: '#00f0ff',
+                        helixGreen: '#10b981',
+                        helixRed: '#ef4444',
+                        helixYellow: '#f59e0b',
+                        helixPurple: '#a855f7',
+                        helixBlue: '#3b82f6'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #030712;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f0ff;
+        }
+        .glow-cyan { box-shadow: 0 0 15px rgba(0, 240, 255, 0.25); }
+        .glow-green { box-shadow: 0 0 15px rgba(16, 185, 129, 0.25); }
+        .glow-purple { box-shadow: 0 0 15px rgba(168, 85, 247, 0.25); }
+        
+        .base-tile {
+            transition: all 0.2s ease;
+        }
+        .base-A { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.5); }
+        .base-T { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.5); }
+        .base-C { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: rgba(59, 130, 246, 0.5); }
+        .base-G { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(245, 158, 11, 0.5); }
+        .base-N { background: rgba(239, 68, 68, 0.4); color: #ffffff; border-color: #ef4444; animation: pulse 1s infinite; }
+        .base-repaired { background: rgba(0, 240, 255, 0.3); color: #00f0ff; border-color: #00f0ff; }
+        .base-active { transform: scale(1.2); box-shadow: 0 0 12px #00f0ff; z-index: 10; border-color: #fff; }
+    </style>
+</head>
+<body class="bg-helixBg text-slate-100 font-sans h-screen w-screen overflow-hidden flex flex-col">
+
+    <!-- HEADER SUPERIORE DI STATO HARDWARE -->
+    <header class="bg-[#050811] border-b border-slate-800/80 px-4 py-2.5 flex justify-between items-center z-30 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="relative flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-helixCyan opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-helixCyan"></span>
+            </div>
+            <div>
+                <h1 class="text-sm sm:text-base font-black tracking-wider text-helixCyan font-mono flex items-center gap-2">
+                    HELIX OS <span class="text-[10px] bg-helixCyan/10 text-helixCyan border border-helixCyan/30 px-1.5 py-0.5 rounded font-mono">v4.0 ENTERPRISE</span>
+                </h1>
+            </div>
+        </div>
+        
+        <!-- BARRA STATI ESP32 & SENSORI -->
+        <div class="flex items-center space-x-2 sm:space-x-4 text-xs font-mono">
+            <div class="hidden md:flex items-center space-x-3 bg-slate-900/80 px-3 py-1 rounded border border-slate-800">
+                <span class="text-slate-500">PRESSIONE HYD:</span>
+                <span id="pressure-val" class="text-slate-200 font-bold">2.4 BAR</span>
+            </div>
+            <div class="hidden sm:flex items-center space-x-2 bg-slate-900/80 px-3 py-1 rounded border border-slate-800">
+                <span class="text-slate-500">FPS:</span>
+                <span id="fps-counter" class="text-helixGreen font-bold">60</span>
+            </div>
+            <div class="flex items-center space-x-2 bg-slate-900 px-3 py-1 rounded border border-helixCyan/40 glow-cyan">
+                <i class="fa-solid fa-microchip text-helixCyan animate-pulse"></i>
+                <span class="text-helixCyan font-semibold hidden sm:inline">ESP32-S3:</span>
+                <span class="text-helixGreen font-bold">ONLINE (12V)</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTAINER PRINCIPALE (LAYOUT GRID RESPONSIVE) -->
+    <div class="flex flex-col lg:flex-row flex-1 h-[calc(100vh-49px)] overflow-hidden">
+        
+        <!-- SIDEBAR DI CONTROLLO TOUCH (LEFT) -->
+        <aside class="w-full lg:w-96 bg-helixPanel border-b lg:border-b-0 lg:border-r border-slate-800/80 p-3.5 flex flex-col gap-3.5 overflow-y-auto shrink-0 z-20">
+            
+            <!-- CONTROLLO CAMPIONE E DEGRADO -->
+            <div class="bg-slate-900/60 border border-slate-800 p-3 rounded-xl space-y-2.5">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">Seleziona Campione Bio</span>
+                    <i class="fa-solid fa-dna text-helixCyan"></i>
+                </div>
+                
+                <select id="sample-selector" onchange="changeSample()" class="w-full bg-slate-950 border border-slate-700 text-xs font-mono text-slate-200 p-2 rounded-lg focus:outline-none focus:border-helixCyan transition-colors">
+                    <option value="MAMMOTH">Mammuthus primigenius (Mammut lanoso)</option>
+                    <option value="DODO">Raphus cucullatus (Dodo)</option>
+                    <option value="TREX">Tyrannosaurus rex (Fossile T-Rex)</option>
+                    <option value="CUSTOM">Sequenza Personalizzata (Synt-Lab)</option>
+                </select>
+
+                <!-- SLIDER SIMULAZIONE DEGRADO -->
+                <div>
+                    <div class="flex justify-between items-center text-[11px] font-mono text-slate-400 mb-1">
+                        <span>Tasso Degrado DNA:</span>
+                        <span id="degrade-val" class="text-helixRed font-bold">35%</span>
+                    </div>
+                    <input id="degrade-slider" type="range" min="5" max="80" value="35" oninput="document.getElementById('degrade-val').innerText = this.value + '%'" class="w-full accent-helixRed bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+            <!-- BOTTONI AZIONE FLUSSO WORKFLOW -->
+            <div class="grid grid-cols-1 gap-2">
+                <!-- RUN ALL THREE PIPELINE BUTTON -->
+                <button onclick="runFullPipeline()" class="group w-full bg-gradient-to-r from-helixCyan/20 via-helixYellow/20 to-helixGreen/20 hover:from-helixCyan/30 hover:via-helixYellow/30 hover:to-helixGreen/30 active:scale-[0.98] border border-helixCyan text-white p-3.5 rounded-xl font-black text-xs flex items-center justify-between transition-all duration-150 shadow-lg glow-cyan">
+                    <div class="flex items-center space-x-2.5">
+                        <i class="fa-solid fa-play text-helixCyan font-mono text-sm group-hover:scale-125 transition-transform"></i>
+                        <span class="tracking-wider uppercase">FLUSSO COMPLETO (1 + 2 + 3)</span>
+                    </div>
+                    <i class="fa-solid fa-angles-right text-xs text-helixGreen animate-pulse"></i>
+                </button>
+
+                <!-- 1. SCANSIONE -->
+                <button onclick="runScan()" class="group w-full bg-slate-900 hover:bg-slate-800 active:scale-[0.98] border border-helixCyan/50 text-helixCyan p-3 rounded-xl font-bold text-xs flex items-center justify-between transition-all duration-150 shadow-md">
+                    <div class="flex items-center space-x-2.5">
+                        <i class="fa-solid fa-magnifying-glass font-mono text-sm group-hover:rotate-12 transition-transform"></i>
+                        <span class="tracking-wide">1. SCANSIONE &amp; ALINEAMENTO</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[10px] opacity-50"></i>
+                </button>
+
+                <!-- 2. RICOSTRUZIONE -->
+                <button onclick="runReconstruction()" class="group w-full bg-slate-900 hover:bg-slate-800 active:scale-[0.98] border border-helixYellow/50 text-helixYellow p-3 rounded-xl font-bold text-xs flex items-center justify-between transition-all duration-150 shadow-md">
+                    <div class="flex items-center space-x-2.5">
+                        <i class="fa-solid fa-wand-magic-sparkles font-mono text-sm group-hover:scale-110 transition-transform"></i>
+                        <span class="tracking-wide">2. RIPARAZIONE ALGORITMICA</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[10px] opacity-50"></i>
+                </button>
+
+                <!-- 3. BIOSTAMPA -->
+                <button onclick="runBioprinter()" class="group w-full bg-slate-900 hover:bg-slate-800 active:scale-[0.98] border border-helixGreen/50 text-helixGreen p-3 rounded-xl font-bold text-xs flex items-center justify-between transition-all duration-150 shadow-md">
+                    <div class="flex items-center space-x-2.5">
+                        <i class="fa-solid fa-syringe font-mono text-sm group-hover:translate-x-0.5 transition-transform"></i>
+                        <span class="tracking-wide">3. EROGAZIONE MICROFLUIDICA 12V</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[10px] opacity-50"></i>
+                </button>
+            </div>
+
+            <!-- HARDWARE HARD MONITORING (VALVOLE 12V) -->
+            <div class="bg-slate-900/60 border border-slate-800 p-3 rounded-xl">
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-2 flex justify-between items-center">
+                    <span>Stato Valvole Solenoide (12V)</span>
+                    <span class="text-[9px] text-helixCyan font-mono">PWM READY</span>
+                </div>
+                <div class="grid grid-cols-4 gap-1.5 text-center font-mono text-[10px]">
+                    <div id="valve-A" class="bg-slate-950 border border-slate-800 p-2 rounded flex flex-col items-center">
+                        <span class="text-slate-500 mb-1">VALV A</span>
+                        <div class="w-3 h-3 rounded-full bg-slate-800 indicator"></div>
+                        <span class="text-[9px] text-emerald-400 mt-1 font-bold">ADE</span>
+                    </div>
+                    <div id="valve-T" class="bg-slate-950 border border-slate-800 p-2 rounded flex flex-col items-center">
+                        <span class="text-slate-500 mb-1">VALV T</span>
+                        <div class="w-3 h-3 rounded-full bg-slate-800 indicator"></div>
+                        <span class="text-[9px] text-rose-400 mt-1 font-bold">TIM</span>
+                    </div>
+                    <div id="valve-C" class="bg-slate-950 border border-slate-800 p-2 rounded flex flex-col items-center">
+                        <span class="text-slate-500 mb-1">VALV C</span>
+                        <div class="w-3 h-3 rounded-full bg-slate-800 indicator"></div>
+                        <span class="text-[9px] text-blue-400 mt-1 font-bold">CIT</span>
+                    </div>
+                    <div id="valve-G" class="bg-slate-950 border border-slate-800 p-2 rounded flex flex-col items-center">
+                        <span class="text-slate-500 mb-1">VALV G</span>
+                        <div class="w-3 h-3 rounded-full bg-slate-800 indicator"></div>
+                        <span class="text-[9px] text-amber-400 mt-1 font-bold">GUA</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- UTILITY TOOLBAR (RESET & EXPORT) -->
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="resetAll()" class="bg-red-950/20 hover:bg-red-900/40 active:scale-[0.98] border border-helixRed/30 text-helixRed p-2 rounded-lg font-bold text-[11px] flex items-center justify-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>RESET ALL</span>
+                </button>
+                <button onclick="exportReport()" class="bg-slate-900 hover:bg-slate-800 active:scale-[0.98] border border-slate-700 text-slate-300 p-2 rounded-lg font-bold text-[11px] flex items-center justify-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-file-export text-helixCyan"></i>
+                    <span>REPORT JSON</span>
+                </button>
+            </div>
+
+            <!-- TERMINALE TELEMETRICO CONSOLE -->
+            <div class="flex-1 flex flex-col min-h-[140px] pt-1">
+                <div class="flex items-center justify-between mb-1.5">
+                    <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">Console Telemetria</h3>
+                    <span class="text-[9px] text-slate-500 font-mono">SERIAL: 115200 N 8 1</span>
+                </div>
+                <div id="terminal" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2.5 font-mono text-[10.5px] overflow-y-auto space-y-1 text-slate-300">
+                    <div class="text-helixCyan">[SYSTEM] Helix OS Suite v4.0 Online.</div>
+                    <div class="text-slate-500">[INIT] Selezionare un campione e avviare la scansione.</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- VIEWPORT CENTRALE (VISUALIZZATORE 3D + SEQUENZIATORE + TELEMETRIA) -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-950 relative">
+            
+            <!-- CONTROLLI CAMERA 3D & LEGENDA -->
+            <div class="absolute top-3 left-3 z-10 flex flex-col gap-2">
+                <!-- LEGENDA -->
+                <div class="bg-slate-950/85 backdrop-blur border border-slate-800 p-2.5 rounded-lg text-xs font-mono space-y-1.5 shadow-2xl">
+                    <div class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Legenda Molecolare</div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-helixGreen inline-block"></span>
+                        <span class="text-slate-300 text-[11px]">Base Integra</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-helixRed inline-block animate-pulse"></span>
+                        <span class="text-slate-300 text-[11px]">Frammento Mancante ('N')</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-helixCyan inline-block"></span>
+                        <span class="text-slate-300 text-[11px]">Base Riparata / Erogata</span>
+                    </div>
+                </div>
+
+                <!-- CAM PRESET BUTTONS -->
+                <div class="bg-slate-950/85 backdrop-blur border border-slate-800 p-1.5 rounded-lg flex space-x-1">
+                    <button onclick="setCameraPreset('front')" class="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-[10px] font-mono text-slate-300 rounded border border-slate-700">VISTA FRONTE</button>
+                    <button onclick="setCameraPreset('top')" class="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-[10px] font-mono text-slate-300 rounded border border-slate-700">TOP-DOWN</button>
+                    <button onclick="toggleAutoRotate()" id="btn-rotate" class="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-[10px] font-mono text-helixCyan rounded border border-helixCyan/40">ROTAZIONE: ON</button>
+                </div>
+            </div>
+
+            <!-- CANVAS 3D (THREE.JS) -->
+            <div id="canvas-3d" class="w-full h-[55%] lg:h-[60%] relative cursor-grab active:cursor-grabbing"></div>
+
+            <!-- PANNELLO INFERIORE: SEQUENZIATORE ATCG + GRAFICO CHART.JS -->
+            <div class="w-full h-[45%] lg:h-[40%] bg-helixPanel border-t border-slate-800/80 p-3 flex flex-col gap-2.5 justify-between">
+                
+                <!-- VISUALIZZATORE ATCG SEQUENZIATORE REAL-TIME -->
+                <div class="bg-slate-950 border border-slate-800 p-2 rounded-lg">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="text-[10px] font-bold text-slate-400 font-mono uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-bars-staggered text-helixCyan"></i> Sequenziatore Nucleotidico Live (1-40)
+                        </span>
+                        <span id="sequence-stats" class="text-[10px] font-mono text-slate-500">In attesa di scansione...</span>
+                    </div>
+                    <div id="sequence-viewer" class="flex gap-1 overflow-x-auto pb-1 min-h-[38px] items-center">
+                        <span class="text-xs text-slate-600 font-mono italic">Premere "Scansione & Alignment" per generare la mappa genica.</span>
+                    </div>
+                </div>
+
+                <!-- PANNELLO TELEMETRIA QUALITA' SEGNALE (CHART.JS) -->
+                <div class="flex-1 flex flex-col justify-between min-h-0">
+                    <div class="flex justify-between items-center mb-1">
+                        <h3 class="text-xs font-bold text-helixCyan uppercase tracking-wider font-mono flex items-center space-x-2">
+                            <i class="fa-solid fa-chart-line"></i>
+                            <span>Profilo Qualità Segnale Elettroforetico (%)</span>
+                        </h3>
+                        <div id="coverage-badge" class="text-[10px] font-mono bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-slate-400">
+                            Copertura: 0%
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 relative w-full h-full min-h-0">
+                        <canvas id="telemetryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPT LOGICA E COMPONENTI -->
+    <script>
+        // =========================================================
+        // BANCA DATI GENOMI & CONFIGURAZIONE
+        // =========================================================
+        const GENOME_DATABASE = {
+            MAMMOTH: "ATGCGTACTAGCTAGCTAGCTAGCTGATCGATCGATGCAT",
+            DODO:    "TACGGCATCGATCGATCGATCGATCGATCGATCGATCGTA",
+            TREX:    "GGCCATATCGATCGATCGATCGATCGATCGATCGATCGGG",
+            CUSTOM:  "ATGCATGCATGCATGCATGCATGCATGCATGCATGCATGC"
+        };
+
+        let targetGenome = GENOME_DATABASE.MAMMOTH;
+        let degradedSequence = "";
+        let reconstructedSequence = "";
+        let isBioprinting = false;
+        let autoRotate = true;
+
+        // Terminal Log Utility
+        function log(msg, type = "info") {
+            const term = document.getElementById("terminal");
+            const time = new Date().toLocaleTimeString();
+            let colorClass = "text-helixCyan";
+            if (type === "success") colorClass = "text-helixGreen font-semibold";
+            if (type === "warn") colorClass = "text-helixYellow font-semibold";
+            if (type === "err") colorClass = "text-helixRed font-semibold";
+            if (type === "pulse") colorClass = "text-helixPurple font-bold";
+
+            const logItem = document.createElement("div");
+            logItem.className = colorClass;
+            logItem.innerHTML = `<span class="text-slate-600 font-normal">[${time}]</span> ${msg}`;
+            term.appendChild(logItem);
+            term.scrollTop = term.scrollHeight;
+        }
+
+        // Cambio Campione Selezionato
+        function changeSample() {
+            const selected = document.getElementById("sample-selector").value;
+            targetGenome = GENOME_DATABASE[selected] || GENOME_DATABASE.MAMMOTH;
+            log(`Campione selezionato: ${selected} (${targetGenome.length} Basi Nucleotidiche).`, "info");
+            resetAll(false);
+        }
+
+        // Aggiorna Badge Copertura
+        function updateCoverage(percent) {
+            const badge = document.getElementById("coverage-badge");
+            badge.innerText = `Copertura: ${percent}%`;
+            if (percent === 100) {
+                badge.className = "text-[10px] font-mono bg-emerald-950 border border-helixGreen px-2 py-0.5 rounded text-helixGreen font-bold glow-green";
+            } else if (percent > 0) {
+                badge.className = "text-[10px] font-mono bg-amber-950 border border-helixYellow px-2 py-0.5 rounded text-helixYellow font-bold";
+            } else {
+                badge.className = "text-[10px] font-mono bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-slate-400";
+            }
+        }
+
+        // Renderizza Visualizzatore Tasselli ATCG
+        function renderSequenceViewer(seq, activeIdx = -1) {
+            const viewer = document.getElementById("sequence-viewer");
+            const stats = document.getElementById("sequence-stats");
+            viewer.innerHTML = "";
+
+            if (!seq) {
+                viewer.innerHTML = `<span class="text-xs text-slate-600 font-mono italic">Premere "Scansione & Alignment" per generare la mappa genica.</span>`;
+                stats.innerText = "In attesa di scansione...";
+                return;
+            }
+
+            let nOps = 0;
+            for (let i = 0; i < seq.length; i++) {
+                const base = seq[i];
+                const tile = document.createElement("div");
+                
+                let baseClass = `base-${base}`;
+                if (base === 'N') nOps++;
+                if (reconstructedSequence && degradedSequence[i] === 'N') {
+                    baseClass = "base-repaired";
+                }
+
+                tile.className = `base-tile w-7 h-7 rounded border text-[11px] font-mono font-bold flex items-center justify-center shrink-0 ${baseClass} ${i === activeIdx ? 'base-active' : ''}`;
+                tile.innerText = base;
+                viewer.appendChild(tile);
+            }
+
+            stats.innerText = `Totale Basi: ${seq.length} | Frammenti Mancanti: ${nOps}`;
+        }
+
+        // =========================================================
+        // CHART.JS TELEMETRIA
+        // =========================================================
+        const ctx = document.getElementById('telemetryChart').getContext('2d');
+        const telemetryChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Array.from({length: targetGenome.length}, (_, i) => i + 1),
+                datasets: [{
+                    label: 'Qualità del Segnale (%)',
+                    data: Array(targetGenome.length).fill(0),
+                    backgroundColor: '#1e293b',
+                    borderRadius: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 300 },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 9 } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 8 } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        // =========================================================
+        // THREE.JS - VISUALIZZATORE 3D AVANZATO DNA
+        // =========================================================
+        const container = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x030712);
+
+        const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 0, 34);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Illuminazione d'atmosfera di laboratorio
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const dirLight1 = new THREE.DirectionalLight(0x00f0ff, 1.2);
+        dirLight1.position.set(20, 20, 20);
+        scene.add(dirLight1);
+
+        const dirLight2 = new THREE.DirectionalLight(0xa855f7, 0.8);
+        dirLight2.position.set(-20, -20, -20);
+        scene.add(dirLight2);
+
+        let dnaGroup = new THREE.Group();
+        scene.add(dnaGroup);
+
+        // Costruttore Struttura DNA 3D
+        function build3DDNA(state = "empty", activePulseIdx = -1) {
+            while(dnaGroup.children.length > 0){ 
+                const child = dnaGroup.children[0];
+                if(child.geometry) child.geometry.dispose();
+                if(child.material) child.material.dispose();
+                dnaGroup.remove(child); 
+            }
+
+            if (state === "empty") return;
+
+            const nBases = targetGenome.length;
+            const radius = 4.5;
+            const spacing = 1.0;
+
+            for (let i = 0; i < nBases; i++) {
+                const angle = i * 0.42;
+                const y = (i - nBases / 2) * spacing;
+
+                const x1 = Math.cos(angle) * radius;
+                const z1 = Math.sin(angle) * radius;
+                const x2 = Math.cos(angle + Math.PI) * radius;
+                const z2 = Math.sin(angle + Math.PI) * radius;
+
+                // Backbone Spheres
+                const sGeo = new THREE.SphereGeometry(0.38, 16, 16);
+                const mat1 = new THREE.MeshStandardMaterial({ color: 0x00f0ff, roughness: 0.2, metalness: 0.4 });
+                const mat2 = new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.2, metalness: 0.4 });
+
+                const sphere1 = new THREE.Mesh(sGeo, mat1);
+                sphere1.position.set(x1, y, z1);
+                dnaGroup.add(sphere1);
+
+                const sphere2 = new THREE.Mesh(sGeo, mat2);
+                sphere2.position.set(x2, y, z2);
+                dnaGroup.add(sphere2);
+
+                // Colore del Ponte a Idrogeno
+                let bridgeColor = 0x10b981;
+                let bridgeOpacity = 0.9;
+
+                if (state === "degraded") {
+                    if (degradedSequence[i] === 'N') {
+                        bridgeColor = 0xef4444;
+                        bridgeOpacity = 0.35;
+                    }
+                } else if (state === "reconstructed") {
+                    if (degradedSequence[i] === 'N') {
+                        bridgeColor = 0x00f0ff;
+                    }
+                }
+
+                if (i === activePulseIdx) {
+                    bridgeColor = 0xffffff;
+                    bridgeOpacity = 1.0;
+                }
+
+                // Cilindro Ponte
+                const cylinderGeo = new THREE.CylinderGeometry(0.16, 0.16, radius * 2, 12);
+                const cylinderMat = new THREE.MeshStandardMaterial({ 
+                    color: bridgeColor, 
+                    transparent: true, 
+                    opacity: bridgeOpacity,
+                    roughness: 0.1
+                });
+                
+                const cylinder = new THREE.Mesh(cylinderGeo, cylinderMat);
+                cylinder.position.set(0, y, 0);
+                cylinder.rotation.z = Math.PI / 2;
+                cylinder.rotation.y = -angle;
+                dnaGroup.add(cylinder);
+            }
+        }
+
+        // Controlli Camera Presets
+        function setCameraPreset(preset) {
+            if (preset === 'front') {
+                camera.position.set(0, 0, 34);
+            } else if (preset === 'top') {
+                camera.position.set(0, 35, 0.1);
+            }
+            controls.update();
+        }
+
+        function toggleAutoRotate() {
+            autoRotate = !autoRotate;
+            const btn = document.getElementById("btn-rotate");
+            btn.innerText = `ROTAZIONE: ${autoRotate ? 'ON' : 'OFF'}`;
+            btn.className = `px-2 py-1 bg-slate-900 hover:bg-slate-800 text-[10px] font-mono rounded border ${autoRotate ? 'text-helixCyan border-helixCyan/40' : 'text-slate-400 border-slate-700'}`;
+        }
+
+        // Loop di Rendering 3D & FPS Counter
+        let lastFrameTime = performance.now();
+        let frameCount = 0;
+        const fpsElement = document.getElementById("fps-counter");
+
+        function animate(now) {
+            requestAnimationFrame(animate);
+
+            frameCount++;
+            if (now - lastFrameTime >= 1000) {
+                fpsElement.innerText = frameCount;
+                frameCount = 0;
+                lastFrameTime = now;
+            }
+
+            if (autoRotate && !isBioprinting) {
+                dnaGroup.rotation.y += 0.005;
+            } else if (isBioprinting) {
+                dnaGroup.rotation.y += 0.015;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate(performance.now());
+
+        // Handling Resize Window
+        window.addEventListener('resize', () => {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+
+        // =========================================================
+        // WORKFLOW & ATTUAZIONE HARDWARE
+        // =========================================================
+
+        // Attiva visivamente i LED delle Valvole Solenoide
+        function triggerValveUI(base) {
+            ['A', 'T', 'C', 'G'].forEach(b => {
+                const valveEl = document.getElementById(`valve-${b}`);
+                if (!valveEl) return;
+                
+                const indicator = valveEl.querySelector('.indicator');
+                if (b === base) {
+                    if (indicator) indicator.className = "w-3 h-3 rounded-full bg-helixCyan animate-ping";
+                    valveEl.classList.add("border-helixCyan");
+                } else {
+                    if (indicator) indicator.className = "w-3 h-3 rounded-full bg-slate-800";
+                    valveEl.classList.remove("border-helixCyan");
+                }
+            });
+        }
+
+        // 1. SCANSIONE DNA
+        function runScan() {
+            log("Avvio scansione lettore elettroforetico...", "info");
+            const degradeRate = parseInt(document.getElementById("degrade-slider").value) / 100;
+            
+            let deg = [];
+            let chartData = [];
+            let intactCount = 0;
+
+            for (let i = 0; i < targetGenome.length; i++) {
+                if (Math.random() < degradeRate) {
+                    deg.push('N');
+                    chartData.push(randomInt(5, 25));
+                } else {
+                    deg.push(targetGenome[i]);
+                    const quality = randomInt(80, 99);
+                    chartData.push(quality);
+                    intactCount++;
+                }
+            }
+
+            degradedSequence = deg.join('');
+            reconstructedSequence = "";
+
+            const coveragePct = Math.round((intactCount / targetGenome.length) * 100);
+            updateCoverage(coveragePct);
+
+            log(`Scansione ultimata. Lacune rilevate: ${targetGenome.length - intactCount}. Copertura: ${coveragePct}%`, "warn");
+
+            // Aggiorna Grafico & Tasselli ATCG
+            telemetryChart.data.labels = Array.from({length: targetGenome.length}, (_, i) => i + 1);
+            telemetryChart.data.datasets[0].data = chartData;
+            telemetryChart.data.datasets[0].backgroundColor = chartData.map(v => v < 50 ? '#ef4444' : '#10b981');
+            telemetryChart.update();
+
+            renderSequenceViewer(degradedSequence);
+            build3DDNA("degraded");
+        }
+
+        // 2. RIPARAZIONE ALGORITMICA
+        function runReconstruction() {
+            if (!degradedSequence) {
+                log("[ERRORE] Eseguire prima la scansione del filamento!", "err");
+                return;
+            }
+
+            log("Algoritmo Helix OS: Allineamento genoma di riferimento...", "info");
+
+            setTimeout(() => {
+                reconstructedSequence = targetGenome;
+                log("Riparazione molecolare completata! 100% lacune ripristinate.", "success");
+
+                updateCoverage(100);
+
+                telemetryChart.data.datasets[0].data = Array(targetGenome.length).fill(96);
+                telemetryChart.data.datasets[0].backgroundColor = '#00f0ff';
+                telemetryChart.update();
+
+                renderSequenceViewer(reconstructedSequence);
+                build3DDNA("reconstructed");
+            }, 500);
+        }
+
+        // 3. STAMPA MICROFLUIDICA 12V
+        function runBioprinter(onComplete) {
+            if (!reconstructedSequence) {
+                log("[ERRORE] Nessun genoma ricostruito per la biostampa!", "err");
+                return;
+            }
+
+            if (isBioprinting) return;
+            isBioprinting = true;
+
+            log("Avvio erogazione microfluidica ESP32 (Valvole 12V)...", "pulse");
+            
+            let pos = 0;
+            const interval = setInterval(() => {
+                if (pos >= reconstructedSequence.length) {
+                    clearInterval(interval);
+                    isBioprinting = false;
+                    triggerValveUI(null);
+                    log(">>> PROCESSO DI BIOSTAMPA COMPLETATO CON SUCCESSO <<<", "success");
+                    build3DDNA("reconstructed");
+                    renderSequenceViewer(reconstructedSequence);
+                    if (typeof onComplete === 'function') onComplete();
+                    return;
+                }
+
+                const base = reconstructedSequence[pos];
+                triggerValveUI(base);
+                
+                // Variazione simulata pressione idraulica
+                document.getElementById("pressure-val").innerText = (2.2 + Math.random() * 0.4).toFixed(1) + " BAR";
+
+                log(`Erogazione nucleotide [${base}] @ pos ${pos + 1} (Impulso 12V ok)`, "info");
+                
+                renderSequenceViewer(reconstructedSequence, pos);
+                build3DDNA("reconstructed", pos);
+                pos++;
+            }, 200);
+        }
+
+        // FLUSSO COMPLETO AUTOMATIZZATO (1 -> 2 -> 3)
+        function runFullPipeline() {
+            if (isBioprinting) return;
+            log("=== AVVIO WORKFLOW COMPLETO DE-ESTINZIONE ===", "pulse");
+            
+            // Step 1: Scansione
+            runScan();
+            
+            // Step 2: Ricostruzione (dopo 1s)
+            setTimeout(() => {
+                runReconstruction();
+                
+                // Step 3: Biostampa Microfluidica (dopo altri 1.2s)
+                setTimeout(() => {
+                    runBioprinter(() => {
+                        log("=== WORKFLOW AUTOMATIZZATO ULTIMATO CON SUCCESSO ===", "success");
+                    });
+                }, 1200);
+            }, 1000);
+        }
+
+        // ESPORTAZIONE REPORT JSON
+        function exportReport() {
+            if (!degradedSequence) {
+                log("[ERRORE] Nessun dato da esportare nel report!", "err");
+                return;
+            }
+
+            const reportData = {
+                timestamp: new Date().toISOString(),
+                sample: document.getElementById("sample-selector").value,
+                targetGenome: targetGenome,
+                degradedSequence: degradedSequence,
+                reconstructedSequence: reconstructedSequence || "N/A",
+                status: reconstructedSequence ? "REPAIRED" : "DEGRADED"
+            };
+
+            const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `HelixOS_Report_${Date.now()}.json`;
+            a.click();
+            log("Report di laboratorio JSON generato ed scaricato.", "success");
+        }
+
+        // RESET SISTEMA
+        function resetAll(clearLog = true) {
+            degradedSequence = "";
+            reconstructedSequence = "";
+            isBioprinting = false;
+            
+            updateCoverage(0);
+            triggerValveUI(null);
+            
+            if (clearLog) {
+                document.getElementById("terminal").innerHTML = `<div class="text-helixCyan">[SYSTEM] Sistema ripristinato. Pronti per un nuovo ciclo.</div>`;
+            }
+            
+            telemetryChart.data.datasets[0].data = Array(targetGenome.length).fill(0);
+            telemetryChart.data.datasets[0].backgroundColor = '#1e293b';
+            telemetryChart.update();
+
+            renderSequenceViewer("");
+            build3DDNA("empty");
+        }
+
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+    </script>
+</body>
+</html>
