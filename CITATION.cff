@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "G."
+    given-names: "Andrea"
+title: "Helix OS: A Microfluidic and WebGL Suite for Genomic Analysis"
+version: "5.0.0"
+date-released: 2026-11-10
+url: "https://github.com/andreagn2008-rgb/Helix-os"
+repository-code: "https://github.com/andreagn2008-rgb/Helix-os"
+keywords:
+  - bioinformatics
+  - microfluidics
+  - genomics
+  - threejs
+  - esp32
+  - open-source
+license: MIT
